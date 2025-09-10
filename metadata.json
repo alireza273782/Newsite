@@ -1,0 +1,5 @@
+{
+  "name": "Customer Information Collector",
+  "description": "A web application designed to collect customer information and allow for document uploads, built with React and Tailwind CSS.",
+  "requestFramePermissions": []
+}
