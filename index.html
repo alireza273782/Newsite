@@ -1,0 +1,216 @@
+<!--
+  Customer form with import/export Excel/PDF + LocalStorage persistence + Bank Sepah logo + EmailJS sending with Excel attachment
+  Save as index.html and host with GitHub Pages
+-->
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>سامانه مشتریان - بانک سپه</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+  <style>
+    body{margin:0;font-family:Tahoma,Arial,sans-serif;background:#111;color:#eee}
+    .container{max-width:900px;margin:0 auto;padding:20px}
+    header{text-align:center;margin-bottom:20px}
+    header img{height:100px;margin-bottom:10px}
+    header h1{margin:0;font-size:24px;color:#f39c12}
+    form{display:grid;gap:12px;background:#222;padding:20px;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,0.5)}
+    input,textarea{padding:10px;border:1px solid #555;border-radius:8px;font-size:14px;background:#333;color:#fff}
+    button{padding:10px 14px;border-radius:8px;border:0;cursor:pointer;font-weight:600}
+    .btn-primary{background:#f39c12;color:#000}
+    .btn-secondary{background:#555;color:#fff}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    table{width:100%;margin-top:20px;border-collapse:collapse;font-size:14px;background:#222;border-radius:8px;overflow:hidden}
+    th,td{padding:8px;border:1px solid #555;text-align:center}
+    th{background:#f39c12;color:#000}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <!-- لوگوی بانک سپه -->
+      <img src="Bank_Sepah_logo.svg.png" alt="بانک سپه">
+      <h1>سامانه ثبت اطلاعات مشتریان</h1>
+    </header>
+
+    <form id="customerForm">
+      <input id="fname" placeholder="نام" required>
+      <input id="lname" placeholder="نام خانوادگی" required>
+      <input id="father" placeholder="نام پدر" required>
+      <input id="idnum" placeholder="شماره شناسنامه" required>
+      <textarea id="address" placeholder="آدرس" required></textarea>
+      <input id="mobile" placeholder="تلفن همراه" required>
+      <div class="actions">
+        <button type="submit" class="btn-primary">ثبت</button>
+        <button type="button" onclick="downloadExcel()" class="btn-secondary">دانلود Excel</button>
+        <button type="button" onclick="downloadPDF()" class="btn-secondary">دانلود PDF</button>
+        <button type="button" onclick="downloadTemplate()" class="btn-secondary">دانلود قالب Excel</button>
+        <input type="file" id="excelFile" accept=".xlsx,.xls" class="btn-secondary" />
+        <button type="button" onclick="sendEmail()" class="btn-secondary">ارسال به ایمیل</button>
+      </div>
+    </form>
+
+    <table id="dataTable" style="display:none">
+      <thead>
+        <tr>
+          <th>نام</th>
+          <th>نام خانوادگی</th>
+          <th>نام پدر</th>
+          <th>شماره شناسنامه</th>
+          <th>آدرس</th>
+          <th>موبایل</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    let customers=[];
+    const STORAGE_KEY="customers_data";
+
+    const form=document.getElementById('customerForm');
+    const table=document.getElementById('dataTable');
+    const tbody=table.querySelector('tbody');
+
+    // Load from localStorage when page loads
+    window.addEventListener('DOMContentLoaded',()=>{
+      const saved=localStorage.getItem(STORAGE_KEY);
+      if(saved){
+        customers=JSON.parse(saved);
+        renderTable();
+      }
+    });
+
+    form.addEventListener('submit',e=>{
+      e.preventDefault();
+      const record={
+        fname:document.getElementById('fname').value.trim(),
+        lname:document.getElementById('lname').value.trim(),
+        father:document.getElementById('father').value.trim(),
+        idnum:document.getElementById('idnum').value.trim(),
+        address:document.getElementById('address').value.trim(),
+        mobile:document.getElementById('mobile').value.trim()
+      };
+      customers.push(record);
+      saveData();
+      renderTable();
+      form.reset();
+    });
+
+    function renderTable(){
+      tbody.innerHTML='';
+      customers.forEach(c=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${c.fname}</td><td>${c.lname}</td><td>${c.father}</td><td>${c.idnum}</td><td>${c.address}</td><td>${c.mobile}</td>`;
+        tbody.appendChild(tr);
+      });
+      if(customers.length>0) table.style.display='table';
+    }
+
+    function saveData(){
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(customers));
+    }
+
+    function downloadExcel(){
+      if(customers.length===0){alert('داده‌ای برای دانلود وجود ندارد');return}
+      const ws=XLSX.utils.json_to_sheet(customers);
+      const wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb,ws,'مشتریان');
+      XLSX.writeFile(wb,'customers.xlsx');
+    }
+
+    function downloadTemplate(){
+      const sample=[{نام:'علی',"نام خانوادگی":'محمدی','نام پدر':'رضا','شماره شناسنامه':'1234','آدرس':'تهران','موبایل':'09120000000'}];
+      const ws=XLSX.utils.json_to_sheet(sample);
+      const wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb,ws,'قالب');
+      XLSX.writeFile(wb,'template.xlsx');
+    }
+
+    document.getElementById('excelFile').addEventListener('change',handleFile,false);
+    function handleFile(e){
+      const file=e.target.files[0];
+      if(!file)return;
+      const reader=new FileReader();
+      reader.onload=function(evt){
+        const data=new Uint8Array(evt.target.result);
+        const wb=XLSX.read(data,{type:'array'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const rows=XLSX.utils.sheet_to_json(ws);
+        rows.forEach(r=>{
+          customers.push({
+            fname:r['نام']||r['fname']||'',
+            lname:r['نام خانوادگی']||r['lname']||'',
+            father:r['نام پدر']||r['father']||'',
+            idnum:r['شماره شناسنامه']||r['idnum']||'',
+            address:r['آدرس']||r['address']||'',
+            mobile:r['موبایل']||r['mobile']||''
+          });
+        });
+        saveData();
+        renderTable();
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    async function downloadPDF(){
+      if(customers.length===0){alert('داده‌ای برای دانلود وجود ندارد');return}
+      const { jsPDF } = window.jspdf;
+      const doc=new jsPDF({orientation:'landscape'});
+      doc.setFontSize(14);
+      doc.text('گزارش مشتریان بانک سپه',14,14);
+      const rows=customers.map(c=>[c.fname,c.lname,c.father,c.idnum,c.address,c.mobile]);
+      doc.autoTable({
+        head:[['نام','نام خانوادگی','نام پدر','شماره شناسنامه','آدرس','موبایل']],
+        body:rows,
+        startY:24
+      });
+      doc.save('customers.pdf');
+    }
+
+    // ---- EmailJS Integration ----
+    (function(){
+      emailjs.init("5VfsPN2d6jKDGi6GK");
+    })();
+
+    function sendEmail(){
+      if(customers.length===0){
+        alert('هیچ داده‌ای برای ارسال وجود ندارد');
+        return;
+      }
+
+      // ساخت فایل اکسل به صورت Base64
+      const ws=XLSX.utils.json_to_sheet(customers);
+      const wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb,ws,'مشتریان');
+      const excelBase64=XLSX.write(wb,{bookType:"xlsx",type:"base64"});
+
+      // ساخت attachment صحیح برای EmailJS
+      const fileData="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,"+excelBase64;
+
+      const templateParams={
+        to_email:"example@gmail.com", // اینجا ایمیل گیرنده رو وارد کن
+        message:"لیست مشتریان پیوست شد.",
+        attachments:[
+          {
+            name:"customers.xlsx",
+            data:fileData
+          }
+        ]
+      };
+
+      emailjs.send("service_w8g3iho","template_l8jlezb",templateParams)
+      .then(()=>{
+        alert("ایمیل همراه فایل اکسل ارسال شد ✅");
+      },(error)=>{
+        alert("خطا در ارسال: "+JSON.stringify(error));
+      });
+    }
+  </script>
+</body>
+</html>
